@@ -369,7 +369,7 @@ function addQuartiles(){
 	selectWindow("Results");
 	sizes = newArray(nResults);
 	for (i=0; i<sizes.length; i++){
-		sizes[i] = getResult("AreaInMM", i);
+		sizes[i] = getResult("AreaInMM", i);	//change to normal area for me reusability
 	}
 	
 	//gets the quartiles 

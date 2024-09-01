@@ -10,39 +10,57 @@ var outputType = "tiff"; //tiff is better than jpg for image analysis
 						//as you can not reverse loss of quality
 
 main();
-print("Program done");
 
 function main(){
 	inputDir=getDirectory("Choose Source Directory ");
 	outputDir=getDirectory("Choose Output Directory ");
-	list = getFileList(inputDir);
+	inputFiles = getFileList(inputDir);
 	
-	listLen = list.length;
-	print("Program started " + listLen);
+	print("Program started ");
+	
+	notFound =  newArray(0);
 	
 	//loops through all the images
-	for (i = 0; i < listLen; i++){
-		print("Image: " + i + "identifying" );
+	for (i = 0; i < inputFiles.length; i++){
 		
-		//circle identifier often breaks for no reason
-		//so it tries again
+		//moves to next file, if file already in output
+		if(isFileInDirectory(outputDir, inputFiles[i], true) == true){
+			continue;
+		}
+	
+		print("");
+		print("Image: " + inputFiles[i] + " identifying" );
+		
+		//circle identifier often breaks
+		//so it tries 3 times
 		for(try = 0; try < 3; try++){
-			success = createCircle(inputDir, outputDir, list[i], i);	
+			success = createCircle(inputDir, outputDir, inputFiles[i], i);	
 			
 			if(success == 1){
+				print("succuessfully identified");
 				break;	
 			}
 		
-			print("Could not dectect petri trying again");
+			print("Could not dectect petri trying again ");
 			if(try == 2){
-				print("Could not find petri dish for " + list[i]);	
+				print("Could not find petri dish for " + inputFiles[i]);
+				notFound = Array.concat(notFound, inputFiles[i]);
 			}
 		}
 	}
 	   
 	
-	//	saveAs("results", outputDir + outputName + ".csv");
-	print("Program successful");
+	
+	print("Program Finished");
+	
+	if(notFound.length == 0){
+		print("All petri dishes found");
+	} else {
+		print("Could not find petri dishes: ")
+		for(i = 0; i < no; i++){
+			notFound[i];
+		}
+	}
 }
 
 
@@ -76,9 +94,6 @@ function createCircle(inputDir, outputDir, filename, i){
 	minRadius = round(minRadius);
 	maxRadius = round(maxRadius);
 	
-	print("Min Radius: " + minRadius);
-	print("Max Radius: " + maxRadius);
-	
 	wait(10);
 	
 	//finds circle in image - petri dishes are circles
@@ -99,10 +114,10 @@ function createCircle(inputDir, outputDir, filename, i){
 	
 	//checks if time out occurs meaning no image was found
 	if(counter >= waitTimeUntilRetry){
-		print("Returned 0");
 		return 0;
 	}
 	
+	wait(20);
 	close();
 	wait(50);
 	
@@ -110,7 +125,9 @@ function createCircle(inputDir, outputDir, filename, i){
 	x = getResult("X (pixels)", 0);
 	y = getResult("Y (pixels)", 0);
 	radius = getResult("Radius (pixels)", 0);
+	run("Clear Results");
 	
+	//gets location and dimension of petridish
 	diameter = radius * 2  * scaleFactor;
 	xCorner = (x - radius) * scaleFactor;
 	yCorner = (y - radius) * scaleFactor;
@@ -118,10 +135,12 @@ function createCircle(inputDir, outputDir, filename, i){
 	//makes circle on original image
 	open(inputDir + filename);
 	makeOval(xCorner, yCorner, diameter, diameter);
-	setBackgroundColor(0, 0, 0);
-	run("Clear Outside");
-	run("Clear Results");
 	
+	//makes back ground white
+	setBackgroundColor(255, 255, 255);
+	run("Clear Outside");
+	
+	//duplicates image to crop out extra background
 	notCropped = getImageID();
 	run("Duplicate...", " ");
 	saveAs(outputType, outputDir + filename);
@@ -131,3 +150,50 @@ function createCircle(inputDir, outputDir, filename, i){
 	close();
 	return 1;
 }
+
+
+//returns if a array has a string
+function arrayHasString(array, string){
+ 	for (i = 0; i < array.length; i++) {
+ 		if(array[i] == string){
+			return true;
+ 		} 		
+ 	}	
+ 	
+ 	return false;
+ }
+ 
+ 
+ //returns if a file is a directory
+ //		ignoreType - will ignore file type if enabled
+ //			ex: test.jpg -> test
+ function isFileInDirectory(dir, file, ignoreType){
+	files = getFileList(dir);
+	
+	//removes the type at end example: test.jpg -> test
+	if(ignoreType == true){
+		typeStart = lastIndexOf(file, ".");
+		if(typeStart != -1){
+			file = substring(file, 0, typeStart);
+		}
+	}
+ 	
+ 	for (i = 0; i < files.length; i++) {
+ 		dirFile = files[i];
+ 		
+ 		if(ignoreType == true){
+			typeStart = lastIndexOf(dirFile, ".");
+			if(typeStart != -1){
+				dirFile = substring(dirFile, 0, typeStart);
+			}
+		}
+ 		
+ 		if(dirFile == file){
+			return true;
+ 		} 		
+ 	}
+ 	
+ 	return false;
+}
+ 
+ 
