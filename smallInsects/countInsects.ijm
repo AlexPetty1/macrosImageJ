@@ -124,60 +124,11 @@ function countInsects(input, filename, iteration, startRow){
 	saveAs(".tiff", outputDirOverlay + filename);
 	close();
 	
-/////updates the results and summary ///////
-	
-//	//updates results
-//	for(j = startRow; j < nResults; j++){
-//		insectNum = j - startRow + 1;
-//		print(insectNum);
-//		print(j);
-//		print(startRow);
-//		setResult("Number", j, insectNum);
-//	
-//		//converts pixels to cms
-//		areaInPixels = getResult("Area", j);
-//		print("Area in pixels" + areaInPixels);
-//		areaInMM = areaInPixels * (pixelToMM * pixelToMM);
-//		setResult("Area mm", j, areaInMM);
-//		
-//		//adds result to table
-//		selectWindow("Summary");
-//		if(areaInMM < 0.1){
-//			initalCount = Table.get("Super Small Bug or Error", iteration);
-//			Table.set("Super Small Bug or Error", iteration, initalCount + 1);
-//		} else if(areaInMM < 1){
-//			initalCount = Table.get("Small Count", iteration);
-//			Table.set("Small Count", iteration, initalCount + 1);
-//		} else if(areaInMM < 3){
-//			initalCount = Table.get("Medium Count", iteration);
-//			Table.set("Medium Count", iteration, initalCount + 1);
-//		} else if(areaInMM < 8){
-//			initalCount = Table.get("Large Count", iteration);
-//			Table.set("Large Count", iteration, initalCount + 1);
-//		} else {
-//			initalCount = Table.get("Moth", iteration);
-//			Table.set("Moth", iteration, initalCount + 1);
-//		} 
-//	}
 	
 	//gets offset from results for next one
 	updateResults();
 	close();
 	
-	//updates summary
-//	selectWindow("Summary");
-//	Table.set("Slice", iteration, filename);
-//	Table.set("Date", iteration, fileNameSplit[0]);
-//	Table.set("Post", iteration, fileNameSplit[1]);
-//	Table.set("Direction", iteration, fileNameSplit[2]);
-	
-	//updates results to mms
-	//replace this with set measurement in future
-//	averageSizePixels = Table.get("Average Size", iteration);
-//	Table.set("Average Size", iteration, averageSizePixels * (pixelToMM * pixelToMM));
-//	totalAreaPixels = Table.get("Total Area", iteration);
-//	Table.set("Total Area", iteration, totalAreaPixels * (pixelToMM * pixelToMM));
-//	
 
 	//closes images and resets roiManger for next image
 	if (isOpen(fullScale)){
