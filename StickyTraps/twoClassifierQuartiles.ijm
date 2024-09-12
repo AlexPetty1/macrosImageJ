@@ -48,8 +48,6 @@ function main(){
 		File.delete(inputDir + "scaledDown.tif");	
 	}
 	
-	wait(20);
-	
 	
 	//scales images
 	scaledImagesList = getFileList(scaledImages);
@@ -96,7 +94,7 @@ function main(){
 	
 	if(mothDirLen != inputDirLen){
 		for (i = mothDirLen; i < inputDirLen; i++) {
-			filterParticlesBySize(mothTemp, mothTempList[i], mothThresholds, 100, "Infinity");
+			filterParticlesBySize(mothTemp, mothTempList[i], mothThresholds, 1500, "Infinity");
 		}
 		run("Clear Results");
 	}
@@ -184,6 +182,8 @@ function getThesholdFromClassifier(inputDir, inputFile, outputDir){
 	call("trainableSegmentation.Weka_Segmentation.applyClassifier", inputDir, inputFile, 
 		"showResults=true", "storeResults=false", "probabilityMaps=false", "");
 	
+	
+
 	inputOne = getImageID();
 	close();
 	
@@ -226,7 +226,7 @@ function filterParticlesBySize(inputDir, inputFile, outputDir, min, max){
 	run("Convert to Mask");
 	run("8-bit");
 	run("Fill Holes");
-	run("Analyze Particles...", "size=1500-Infinity show=Masks");
+	run("Analyze Particles...", "size=" +min +"-" + max + "Infinity show=Masks");
 	saveAs(".tiff", outputDir + inputFile);
 	close();
 	safeClose(originalImg);

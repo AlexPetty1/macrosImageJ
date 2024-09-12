@@ -19,7 +19,7 @@
 var rulerDiagonalMM = 170;
 var scaleFactor = 4;
 var scaleFactorInverse =  1/scaleFactor;
-var minParticleSize = 1500;
+var minParticleSize = 3000;
 
 
 #@ File (label="Select a classifier for ruler", description="Select the Weka model to apply") classifierRuler
@@ -65,7 +65,7 @@ function main(){
 	selectWindow("Trainable Weka Segmentation v3.3.4");
 	call("trainableSegmentation.Weka_Segmentation.loadClassifier", classifierRuler);
 	
-	//loops through all insects
+	//loops through all images
 	for (i = 0; i < inputList.length; i++){
 		print(inputList[i]);
 		getMeasurement(inputList[i], csvTableName, i);
@@ -81,7 +81,6 @@ function main(){
 	close();
 	
 	print("Program Done");
-	
 }
 
 function getMeasurement(filename, measurmentTableName, iteration){
@@ -93,6 +92,7 @@ function getMeasurement(filename, measurmentTableName, iteration){
 	fullScale = getImageID();
 	selectImage(original);
 	close();
+	
 	
 	//sets measurements
 	selectImage(fullScale);
@@ -109,37 +109,32 @@ function getMeasurement(filename, measurmentTableName, iteration){
 	// weka segmentation needs to use a file in your file directory
 	//		if already opened
 	selectImage(scaled_down);
-	saveAs(".tiff", inputDir + "scaledDown");
+	saveAs(".tiff", outputDir + "temp");
 	selectImage(scaled_down);
 	close();
 	
 	selectWindow("Trainable Weka Segmentation v3.3.4");
-	call("trainableSegmentation.Weka_Segmentation.applyClassifier", inputDir, "scaledDown.tif", 
+	call("trainableSegmentation.Weka_Segmentation.applyClassifier", outputDir, "temp.tif", 
 		"showResults=true", "storeResults=false", "probabilityMaps=false", "");
 	
 	//scaled down not need anymore
-	if(isOpen("scaledDown.tif")){
-		selectImage("scaledDown.tif");
+	if(isOpen("temp.tif")){
+		selectImage("temp.tif");
 		close();	
 	}
-	File.delete(inputDir + "scaledDown.tif");
+	File.delete(outputDir + "temp.tif");
 	
 	//rescales image and runs rgb color to get threshold
 	selectImage("Classification result");
-	run("Scale...", "x=" + scaleFactor + " y=" + scaleFactor + " interpolation=Bilinear average create");
-	run("RGB Color");
-	resultScaled = getImageID();
+	classificationResults = getImageID();
 	
-	//selects just green and uses it as threshold
-	run("Split Channels");
-	wait(50);
-	selectImage("Classification result-1 (blue)");
-	close();
-	selectImage("Classification result-1 (red)");
-	close();
-	selectImage("Classification result");
-	close();
-	selectImage("Classification result-1 (green)");
+	run("Scale...", "x=" + scaleFactor + " y=" + scaleFactor + " interpolation=Bilinear average create");
+	classificationResultsScaled = getImageID();
+
+	setOption("BlackBackground", false);
+	selectImage(classificationResultsScaled);
+	run("8-bit");
+	run("Convert to Mask");
 	threshold = getImageID();
 	
 	//
@@ -153,9 +148,12 @@ function getMeasurement(filename, measurmentTableName, iteration){
 	
 	saveAs(".jpg", outputDirTheshold + filename );
 	
+	//removes ending of file ex: test.jpg -> test
+	tableFileName = removeFileEnding(filename);
+	
 	//add to table
 	selectWindow(measurmentTableName);
-	Table.set("Image", iteration, filename);
+	Table.set("Image", iteration, tableFileName);
 	Table.set("Value", iteration, diagonal);
 	Table.update;
 	
@@ -164,6 +162,9 @@ function getMeasurement(filename, measurmentTableName, iteration){
 	close();
 	selectImage(scaledMask);
 	close();
+	selectImage(classificationResults);
+	close();
+	
 	run("Clear Results");
 }
 
@@ -179,6 +180,16 @@ function longestFeret(){
 	}
 	
 	return longest;
+}
+
+
+//removes the ending type of a file ex: test.jpg -> test
+function removeFileEnding(fileName){
+	typeStart = lastIndexOf(fileName, ".");
+		if(typeStart != -1){
+			fileName = substring(fileName, 0, typeStart);
+		}
+	return fileName;
 }
 
 
