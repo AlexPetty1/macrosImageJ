@@ -4,23 +4,44 @@
 inputDir=getDirectory("Choose Source Directory ");
 outputDir=getDirectory("Choose folder for output");
 
+
+
+//////////////////|| INPUT PARAMETERS    ||/////////////////////////
+
+scaleFactor = 3;			// amount the image is scaled down by 
+							// example of 2:   3000 / 2 -> 1500
+							// do same as when classifying
+							// make sure it is under 1500ish
+							
+petriDishSizeMM = 150;		// size of petri dish in mms
+
+minMothSizePixels = 500;		//todo change to mms
+
+////////////////////////////////////////////////////////////////
+
+
 main();
 
 function main(){
+	// background should always be white, 
+	//		prevents cases of white = 0 one image and another 255 messing up image calculator 
+	setOption("BlackBackground", false);
+
 	//gets input files list
 	inputList = getFileList(inputDir);
 	inputDirLen = inputList.length;
 	
 	
-	//creates directories
-	scaledImages = outputDir + "scaledImages" + "/";				// images scaled to 
-	mothTemp = outputDir + "mothTemp" + "/";						// moth threshold images before size filter
-	mothThresholds = outputDir + "mothThresholds" + "/";			// moth thresholds
-	bugThresholds = outputDir + "bugThresholds" + "/";				// 
-	combinedThresholds = outputDir + "combinedThresholds" + "/";	// results of combination of the two thresholds
-	finalOverlay = outputDir + "finalOverlay" + "/";				// shows images of threshold overlayed upon the original
-	csvResults = outputDir + "csvResults" + "/";					// where the csv files are stored
+	//creates directory strings
+	scaledImages = outputDir + "1._Scaled_Images" + "/";				// images scaled to 
+	mothTemp = outputDir + "2.1a_Moth_Unfiltered_Thresholds" + "/";						// moth threshold images before size filter
+	mothThresholds = outputDir + "2.1b_Moth_Thresholds" + "/";			// moth thresholds
+	bugThresholds = outputDir + "2.2_bugThresholds" + "/";				// 
+	combinedThresholds = outputDir + "3._combinedThresholds" + "/";	// results of combination of the two thresholds
+	finalOverlay = outputDir + "4._Final_Overlay" + "/";				// shows images of threshold overlayed upon the original
+	csvResults = outputDir + "5._CSV_Results" + "/";					// where the csv files are stored
 	
+	//creates directories
 	if(File.exists(scaledImages) == 0){
 		File.makeDirectory(scaledImages);
 	}
@@ -43,20 +64,17 @@ function main(){
 		File.makeDirectory(mothTemp);
 	}
 	
-	//gets rid of scaled down if it exists
-	if(File.exists(inputDir + "scaledDown.tif")){
-		File.delete(inputDir + "scaledDown.tif");	
-	}
+//	if(File.exists(inputDir + "scaledDown.tif")){
+//		File.delete(inputDir + "scaledDown.tif");	
+//	}
 	
-	
-	//scales images
+	//scales all images
 	scaledImagesList = getFileList(scaledImages);
 	scaledImagesDirLen = scaledImagesList.length;
 	
 	if(scaledImagesDirLen < inputDirLen){
-		
 		for(i = scaledImagesDirLen; i < inputDirLen; i++) {
-			scaleAndSave(inputDir, inputList[i], scaledImages, 2);
+			scaleAndSave(inputDir, inputList[i], scaledImages, scaleFactor);
 		}
 	}
 	
@@ -94,7 +112,7 @@ function main(){
 	
 	if(mothDirLen != inputDirLen){
 		for (i = mothDirLen; i < inputDirLen; i++) {
-			filterParticlesBySize(mothTemp, mothTempList[i], mothThresholds, 1500, "Infinity");
+			filterParticlesBySize(mothTemp, mothTempList[i], mothThresholds, minMothSizePixels, "Infinity");
 		}
 		run("Clear Results");
 	}
@@ -170,11 +188,21 @@ function main(){
 	print("Program Successful");
 }
 
-//takes a image, runs a classifier on it, saves output to outputdir
-//returns image at same size
-//closes all images opened
-//assumptions:
-//		classifier is already open
+
+
+// description:
+//		runs a image through the classifier and saves it to a output directory
+//		weka segmentation and the classifier must already be opened
+//arguments:
+//		inputDir - directory where the input file is 
+//		inputfile - name of the of the thresholded file
+//		outputDir - directory where output is stored
+// assumptions:
+//		classifier must be open already
+//		image should be scaled down to under 1500 px, this function may crash if you dont do this
+//		output saved as a tiff for further analysis
+// sideffects:
+//		thresholded image(black and white image) is saved inside the output directory  
 function getThesholdFromClassifier(inputDir, inputFile, outputDir){
 	
 	selectWindow("Trainable Weka Segmentation v3.3.4");
@@ -182,8 +210,6 @@ function getThesholdFromClassifier(inputDir, inputFile, outputDir){
 	call("trainableSegmentation.Weka_Segmentation.applyClassifier", inputDir, inputFile, 
 		"showResults=true", "storeResults=false", "probabilityMaps=false", "");
 	
-	
-
 	inputOne = getImageID();
 	close();
 	
@@ -215,42 +241,80 @@ function getThesholdFromClassifier(inputDir, inputFile, outputDir){
 	safeClose(temp);
 }
 
-
-//will save result to output directory with same file name
-//min and max by pixels
-//reusable
+// description:
+//		will take a thresholded image a filter the particles by size
+//		in it.
+//arguments:
+//		inputDir - directory where the input file is 
+//		inputfile - name of the of the thresholded file
+//		outputDir - directory where output is stored
+//		min - minimum size of particle in pixels
+//		max - maximum size of particle in pixels: it can be "Infinity"
+// assumptions:
+//		inputfile is a binary black and white file
+// sideffects:
+//		filtered image will be in output directory
 function filterParticlesBySize(inputDir, inputFile, outputDir, min, max){
-	setOption("BlackBackground", true);
+	setOption("BlackBackground", false);
 	open(inputDir + inputFile);
 	originalImg = getImageID();
 	run("Convert to Mask");
 	run("8-bit");
 	run("Fill Holes");
-	run("Analyze Particles...", "size=" +min +"-" + max + "Infinity show=Masks");
+	run("Analyze Particles...", "size=" +min +"-" + max + " show=Masks");
 	saveAs(".tiff", outputDir + inputFile);
 	close();
 	safeClose(originalImg);
 }
 
 
-//combines two thresholds into one
+// description:
+//		takes two thresholded images and combines them, then saves it
+//arguments:
+//		dirA - directory where image of threshold A is
+//		fileA - name of threshold A
+//		dirB - directory where image of threshold B is
+//		fileA - name of threshold B
+//		outputDir - 
+// assumptions:
+//		dirA, dirB, and outputDir must all exist
+// sideffects:
+//		image will be saved in outputDirectory and take the name of fileA
 function combineTwoThesholds(dirA, fileA, dirB, fileB, outputDir){
+	setOption("BlackBackground", false);
 	open(dirA + fileA);
-	run("8-bit");
+	run("Convert to Mask");
 	imageA = getImageID();
 	open(dirB + fileB);
-	run("8-bit");
+	run("Convert to Mask");
 	imageB = getImageID();
 	
-	imageCalculator("AND create", imageA, imageB);
+	imageCalculator("OR create", imageA, imageB);
 	saveAs(".tiff", outputDir + fileA);
-	close("*");
+	close();
+	safeClose(imageA);
+	safeClose(imageB);
 }
 
 
-//takes a thresholded image, 
-//		then outputs highlights of all the particles onto the original image
-//		outputs to results
+
+// description:
+//		takes a thresholded image, 
+//		then outputs highlights of all the particles onto the original image,
+//		outputs the results on onto a summary csv of whole image,
+//		and adds label, sizeInPixels, and number to results csv
+//arguments:
+//		thesholdInDir - directory the thresholded image is stored in
+//		thesholdFile -	name of the thresholded image that will be analysed
+//		originalInDir - directory the original unedited image is stored in
+//		originalFile - name of the original image
+//		overlayOutput - directory where the output will be stored
+//		startRow - row the results column is on for repeated calls
+//		iter - what row the summary is on for repeated calls
+// assumptions:
+//		- threshold file is a binary threshold
+// sideffects:
+//		- 
 function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, originalFile, overlayOutput, startRow, iter){
 	open(thesholdInDir + thesholdFile);
 	threshold = getImageID();
@@ -265,14 +329,14 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	
 	//analyses the particles of threshold
 	safeSelect(threshold);
-	run("Scale...", "x=2 y=2 interpolation=Bilinear average create");
+	run("Scale...", "x=" + scaleFactor +" y=" + scaleFactor + " interpolation=Bilinear average create");
 	thesholdScaledUp = getImageID();
 	
 	//analyzes the particles and adds to results
 	run("8-bit");
 	run("Convert to Mask");
 	run("Analyze Particles...", "size=17-Infinity display exclude summarize overlay add");
-	pixelToMM = 150 / getWidth();
+	pixelToMM = petriDishSizeMM / getWidth();
 	safeClose(thesholdScaledUp);
 	safeClose(threshold);
 	
@@ -316,7 +380,6 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 		
 		number++;
 	}
-	
 	close();
 	
 	//updates summary
@@ -326,7 +389,7 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	Table.set("Post", iter, fileNameSplit[1]);
 	Table.set("Direction", iter, fileNameSplit[2]);
 	
-	//updates results to cms
+	//updates results to mms
 	averageSizePixels = Table.get("Average Size", iter);
 	Table.set("Average Size", iter, averageSizePixels * (pixelToMM * pixelToMM));
 	totalAreaPixels = Table.get("Total Area", iter);
@@ -338,7 +401,21 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	roiManager("delete");
 }
 
-//scales all images in a directory then, saves it
+
+
+// description:
+//		takes a file and scales it
+//		designed to be used in a loop to 
+//arguments:
+//		inputDir - directory the input file is in
+//		inputFile - file name
+//		outputDir - directory to save scaled down image
+//		scaleFactor - amount the scale is scaled down by. ex of 2: 1500 -> 750
+// assumptions:
+//		file will be named the same in the outputDir as input directory
+//		input, output, and input file must all exist
+// sideffects:
+//		saves a scaled down version of the file in the output directory
 function scaleAndSave(inputDir, inputFile, outputDir, scaleFactor){
 	scaleFactorInverse = 1/scaleFactor;
 	
@@ -359,17 +436,23 @@ function scaleAndSave(inputDir, inputFile, outputDir, scaleFactor){
 }
 
 
-//updates summary to have quartiles of bug sizes
-//	- must be done after results from threshold as it need overall 
-//		q1, q3, and median insect
-//	- results and summary must be open
+// description:
+//		updates summary to have quartiles of results sizes
+//arguments:
+//		- none
+// assumptions:
+//		- must be done after results from threshold as it needs all results to get quartiles
+//		- results and summary must be open
+//		- results has a label and slice column
+// sideffects:
+//		- the summary table has 4 new quartile columns
 function addQuartiles(){
 	
 	//creates a array of area results
 	selectWindow("Results");
 	sizes = newArray(nResults);
 	for (i=0; i<sizes.length; i++){
-		sizes[i] = getResult("AreaInMM", i);	//change to normal area for me reusability
+		sizes[i] = getResult("AreaInMM", i);	//change to normal area for reusability
 	}
 	
 	//gets the quartiles 
@@ -379,7 +462,11 @@ function addQuartiles(){
 	q3 = sizes[3 *  sizes.length / 4];
 	
 	sumNum = 0;
+	blankArray = newArray(1);
+	blankArray[0] = 0;
+
 	
+	//adds columns to summary
 	selectWindow("Summary");
 	Table.setColumn("Q1 Count", blankArray);
 	Table.setColumn("Q2 Count", blankArray);
@@ -416,7 +503,15 @@ function addQuartiles(){
 	}	
 }
 
-//Designed to not crash if file is not open
+
+// description:
+//		closes the file and does not crash if it does not exist
+//arguments:
+//		- image or file you want to close
+// assumptions:
+//		- none
+// sideffects:
+//		- file will be closed
 function safeClose(file){
 	if(isOpen(file)){
 		selectImage(file);	
@@ -433,7 +528,15 @@ function safeClose(file){
 	}
 }
 
-//Designed to not crash if the 
+// description:
+//		selects the file and does not crash if it does not exist
+//arguments:
+//		- image or file you want to select
+// assumptions:
+//		- none
+// sideffects:
+//		- file will be selected
+// 
 function safeSelect(file){
 	if (isOpen(file)){
 		selectImage(file);	

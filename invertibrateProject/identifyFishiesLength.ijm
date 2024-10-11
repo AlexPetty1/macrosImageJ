@@ -10,7 +10,7 @@
 var scaleFactor = 4;				//set to ratio between original and classified image size
 var scaleFactorInverse = 1/ scaleFactor;
 var knownDistance = 170;
-
+var particleMinSize = 500;
 
 //-----Parameters-------
 
@@ -77,7 +77,7 @@ function main(){
 		
 		//filters by size to eliminate particles we dont want
 		thresholdList = getFileList(thresholdDir);
-		filterParticlesBySize(thresholdDir, thresholdList[i], thresholdDir, 2000, "Infinity");
+		filterParticlesBySize(thresholdDir, thresholdList[i], thresholdDir, particleMinSize, "Infinity");
 		
 		//clean up
 		selectImage(original);

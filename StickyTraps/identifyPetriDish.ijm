@@ -6,8 +6,7 @@ var waitTimeUntilRetry = 50;     //in ms
 var scaleFactorInverse = 1/scaleFactor;
 
 var outputType = "tiff"; //tiff is better than jpg for image analysis
-						//if original image is jpg than use jpg
-						//as you can not reverse loss of quality
+
 
 main();
 
