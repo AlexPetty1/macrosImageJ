@@ -55,7 +55,7 @@ function countInsects(input, filename, iteration, startRow){
 	print("Image width: " + imageWidth);
 	
 	run("Set Scale...", "distance=" + imageWidth + " known=150 unit=mm");
-//	run("Set Scale...", "distance= " + diagonal + " known=" + 170 + " unit=mm");
+
 	//duplicates original then closes it to preserve it
 	run("Duplicate...", " ");
 	fullScale = getImageID();
