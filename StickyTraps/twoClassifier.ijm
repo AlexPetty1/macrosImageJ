@@ -15,7 +15,9 @@ scaleFactor = 3;			// amount the image is scaled down by
 							
 petriDishSizeMM = 150;		// size of petri dish in mms
 
-minMothSizePixels = 500;		//todo change to mms
+minMothSizePixels = 5;		//
+
+minInsectSizePixels = 0.05;
 
 ////////////////////////////////////////////////////////////////
 
@@ -23,20 +25,36 @@ minMothSizePixels = 500;		//todo change to mms
 main();
 
 function main(){
-	// background should always be white, 
-	//		prevents cases of white = 0 one image and another 255 messing up image calculator 
-	setOption("BlackBackground", false);
-
 	//gets input files list
 	inputList = getFileList(inputDir);
 	inputDirLen = inputList.length;
+
+	///// Error checking /////
 	
+	//checks if there are anyfiles
+	if(inputDirLen == 0){
+		print("Your input folder is empty!!");
+		print("Please specify the correct folder or fill the current folder");
+		return;
+	}
+	
+	// checks if the input and output folders are the same
+	if(inputDir == outputDir){
+		print("The input and output directory needs to be different!!");
+		return;
+	}
+	//////////////////////////////
+	
+	
+	// background should always be white, 
+	//		prevents cases of white = 0 one image and another 255 messing up image calculator 
+	setOption("BlackBackground", false);
 	
 	//creates directory strings
 	scaledImages = outputDir + "1._Scaled_Images" + "/";				// images scaled to 
 	mothTemp = outputDir + "2.1a_Moth_Unfiltered_Thresholds" + "/";						// moth threshold images before size filter
 	mothThresholds = outputDir + "2.1b_Moth_Thresholds" + "/";			// moth thresholds
-	bugThresholds = outputDir + "2.2_bugThresholds" + "/";				// 
+	bugThresholds = outputDir + "2.2_Bug_Thresholds" + "/";				// 
 	combinedThresholds = outputDir + "3._combinedThresholds" + "/";	// results of combination of the two thresholds
 	finalOverlay = outputDir + "4._Final_Overlay" + "/";				// shows images of threshold overlayed upon the original
 	csvResults = outputDir + "5._CSV_Results" + "/";					// where the csv files are stored
@@ -64,9 +82,7 @@ function main(){
 		File.makeDirectory(mothTemp);
 	}
 	
-//	if(File.exists(inputDir + "scaledDown.tif")){
-//		File.delete(inputDir + "scaledDown.tif");	
-//	}
+	print("Reached here");
 	
 	//scales all images
 	scaledImagesList = getFileList(scaledImages);
@@ -77,6 +93,8 @@ function main(){
 			scaleAndSave(inputDir, inputList[i], scaledImages, scaleFactor);
 		}
 	}
+	
+	print("Past the scaling sections");
 	
 	
 	//get moth threshold
@@ -105,7 +123,7 @@ function main(){
 		safeClose("Trainable Weka Segmentation v3.3.4");
 	}
 	
-	//scales moth threshold
+	//filters moth threshold by size
 	mothList = getFileList(mothThresholds);
 	mothDirLen = mothList.length;
 	mothTempList = getFileList(mothTemp);
@@ -257,6 +275,11 @@ function getThesholdFromClassifier(inputDir, inputFile, outputDir){
 function filterParticlesBySize(inputDir, inputFile, outputDir, min, max){
 	setOption("BlackBackground", false);
 	open(inputDir + inputFile);
+	
+	//sets scale so units are not in pixels
+	petriWidthMM = getWidth();
+	run("Set Scale...", "distance=" + petriWidthMM + " known=" + petriDishSizeMM + " unit=mm");
+	
 	originalImg = getImageID();
 	run("Convert to Mask");
 	run("8-bit");
@@ -275,7 +298,7 @@ function filterParticlesBySize(inputDir, inputFile, outputDir, min, max){
 //		fileA - name of threshold A
 //		dirB - directory where image of threshold B is
 //		fileA - name of threshold B
-//		outputDir - 
+//		outputDir - directory where the combined threshold output is stored
 // assumptions:
 //		dirA, dirB, and outputDir must all exist
 // sideffects:
@@ -327,16 +350,19 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	
 	safeClose(original);
 	
-	//analyses the particles of threshold
+	//scales threshold back to original size
 	safeSelect(threshold);
 	run("Scale...", "x=" + scaleFactor +" y=" + scaleFactor + " interpolation=Bilinear average create");
 	thesholdScaledUp = getImageID();
 	
+	//sets scale so units are not in pixels
+	petriWidthMM = getWidth();
+	run("Set Scale...", "distance=" + petriWidthMM + " known=" + petriDishSizeMM + " unit=mm");
+	
 	//analyzes the particles and adds to results
 	run("8-bit");
 	run("Convert to Mask");
-	run("Analyze Particles...", "size=17-Infinity display exclude summarize overlay add");
-	pixelToMM = petriDishSizeMM / getWidth();
+	run("Analyze Particles...", "size="+ minInsectSizePixels + "-Infinity display exclude summarize overlay add");
 	safeClose(thesholdScaledUp);
 	safeClose(threshold);
 	
@@ -365,14 +391,16 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 		Table.setColumn("Post", blankArray);
 		Table.setColumn("Direction", blankArray);
 	}
+	//stores conversion
+	mmToPixel = getWidth() / petriDishSizeMM;
 	
 	//updates results
 	number = 1;
 	for(j = startRow; j < nResults; j++){
 		
 		//converts pixels to cms
-		areaInPixels = getResult("Area", j);
-		areaInMM = areaInPixels * (pixelToMM * pixelToMM);
+		areaInMM = getResult("Area", j);
+		areaInPixels = round(areaInMM * (mmToPixel * mmToPixel));
 		setResult("AreaInMM", j, areaInMM);
 		setResult("AreaInPixels", j, areaInPixels);
 		setResult("Number", j, number);
@@ -390,10 +418,10 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	Table.set("Direction", iter, fileNameSplit[2]);
 	
 	//updates results to mms
-	averageSizePixels = Table.get("Average Size", iter);
-	Table.set("Average Size", iter, averageSizePixels * (pixelToMM * pixelToMM));
-	totalAreaPixels = Table.get("Total Area", iter);
-	Table.set("Total Area", iter, totalAreaPixels * (pixelToMM * pixelToMM));
+//	averageSizePixels = Table.get("Average Size", iter);
+//	Table.set("Average Size", iter, averageSizePixels * (pixelToMM * pixelToMM));
+//	totalAreaPixels = Table.get("Total Area", iter);
+//	Table.set("Total Area", iter, totalAreaPixels * (pixelToMM * pixelToMM));
 	Table.update;
 	updateResults();
 	
