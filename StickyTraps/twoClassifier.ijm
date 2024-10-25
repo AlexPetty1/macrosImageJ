@@ -339,6 +339,7 @@ function combineTwoThesholds(dirA, fileA, dirB, fileB, outputDir){
 // sideffects:
 //		- 
 function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, originalFile, overlayOutput, startRow, iter){
+	
 	open(thesholdInDir + thesholdFile);
 	threshold = getImageID();
 	
@@ -372,7 +373,13 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 		roiManager("Select", i);
 		roiManager("update");
 	}
-	run("Flatten");
+	//prevents it from breaking if no insects are detected
+	if(roiManager("count") > 0){
+		run("Flatten");
+	} else {
+		run("Duplicate...", " "); //creates a fake flatten in order to not break later steps
+	}
+	
 	saveAs(".jpg", overlayOutput + originalFile);	//saved as jpg as no future analysis is done on it
 	close();
 	
@@ -391,6 +398,7 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 		Table.setColumn("Post", blankArray);
 		Table.setColumn("Direction", blankArray);
 	}
+	
 	//stores conversion
 	mmToPixel = getWidth() / petriDishSizeMM;
 	
@@ -416,17 +424,13 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	Table.set("Date", iter, fileNameSplit[0]);
 	Table.set("Post", iter, fileNameSplit[1]);
 	Table.set("Direction", iter, fileNameSplit[2]);
-	
-	//updates results to mms
-//	averageSizePixels = Table.get("Average Size", iter);
-//	Table.set("Average Size", iter, averageSizePixels * (pixelToMM * pixelToMM));
-//	totalAreaPixels = Table.get("Total Area", iter);
-//	Table.set("Total Area", iter, totalAreaPixels * (pixelToMM * pixelToMM));
 	Table.update;
 	updateResults();
 	
-	roiManager("deselect");
-	roiManager("delete");
+	if(roiManager("count") > 0){
+		roiManager("deselect");
+		roiManager("delete");
+	}	
 }
 
 
