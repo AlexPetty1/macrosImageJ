@@ -93,8 +93,6 @@ function createCircle(inputDir, outputDir, filename, i){
 	minRadius = round(minRadius);
 	maxRadius = round(maxRadius);
 	
-	wait(10);
-	
 	//finds circle in image - petri dishes are circles
 	run("Find Edges");
 	setAutoThreshold("Default dark no-reset");

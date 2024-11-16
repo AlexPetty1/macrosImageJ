@@ -15,9 +15,9 @@ scaleFactor = 3;			// amount the image is scaled down by
 							
 petriDishSizeMM = 150;		// size of petri dish in mms
 
-minMothSizePixels = 5;		//
+minMothSizeMMs = 5;		// 
 
-minInsectSizePixels = 0.05;
+minInsectSizeMMs = 0.05;
 
 ////////////////////////////////////////////////////////////////
 
@@ -28,6 +28,8 @@ function main(){
 	//gets input files list
 	inputList = getFileList(inputDir);
 	inputDirLen = inputList.length;
+
+
 
 	///// Error checking /////
 	
@@ -46,13 +48,14 @@ function main(){
 	//////////////////////////////
 	
 	
+	
 	// background should always be white, 
 	//		prevents cases of white = 0 one image and another 255 messing up image calculator 
 	setOption("BlackBackground", false);
 	
 	//creates directory strings
-	scaledImages = outputDir + "1._Scaled_Images" + "/";				// images scaled to 
-	mothTemp = outputDir + "2.1a_Moth_Unfiltered_Thresholds" + "/";						// moth threshold images before size filter
+	scaledImages = outputDir + "1._Scaled_Images" + "/";				// images scaled down
+	mothTemp = outputDir + "2.1a_Moth_Unfiltered_Thresholds" + "/";		// moth threshold images before size filter
 	mothThresholds = outputDir + "2.1b_Moth_Thresholds" + "/";			// moth thresholds
 	bugThresholds = outputDir + "2.2_Bug_Thresholds" + "/";				// 
 	combinedThresholds = outputDir + "3._combinedThresholds" + "/";	// results of combination of the two thresholds
@@ -82,8 +85,6 @@ function main(){
 		File.makeDirectory(mothTemp);
 	}
 	
-	print("Reached here");
-	
 	//scales all images
 	scaledImagesList = getFileList(scaledImages);
 	scaledImagesDirLen = scaledImagesList.length;
@@ -94,17 +95,13 @@ function main(){
 		}
 	}
 	
-	print("Past the scaling sections");
 	
-	
-	//get moth threshold
+	//gets moth threshold
 	mothTempList = getFileList(mothTemp);
 	mothTempDirLen = mothTempList.length;
 	scaledImagesList = getFileList(scaledImages);
 	scaledImagesDirLen = scaledImagesList.length;
 	
-	print(mothTempDirLen);
-	print(inputDirLen);
 	if(mothTempDirLen < inputDirLen){
 		//wekka needs a image open for some reason to open
 		open(scaledImages + scaledImagesList[0]);
@@ -127,10 +124,17 @@ function main(){
 	mothList = getFileList(mothThresholds);
 	mothDirLen = mothList.length;
 	mothTempList = getFileList(mothTemp);
-	
 	if(mothDirLen != inputDirLen){
 		for (i = mothDirLen; i < inputDirLen; i++) {
-			filterParticlesBySize(mothTemp, mothTempList[i], mothThresholds, minMothSizePixels, "Infinity");
+			filterParticlesBySize(mothTemp, mothTempList[i], mothThresholds, minMothSizeMMs, "Infinity");
+		
+			//places a pixel to prevent convert to mask will break from breaking with a blank image
+			// Kind of scuffed but it should be filtered out on a later step
+			open(mothThresholds + mothTempList[i]);
+			setPixel(3, 0, 0);
+			setPixel(4, 0, 255);
+			saveAs(".tiff", mothThresholds + mothTempList[i]);
+			close();
 		}
 		run("Clear Results");
 	}
@@ -141,8 +145,6 @@ function main(){
 	bugDirLen = bugList.length;
 	scaledImagesList = getFileList(scaledImages);
 	scaledImagesDirLen = scaledImagesList.length;
-	
-	Array.print(scaledImagesList);
 	
 	if(bugDirLen != inputDirLen){
 		open(scaledImages + scaledImagesList[0]);
@@ -167,7 +169,6 @@ function main(){
 	combinedDirLen = combinedList.length;
 	bugList = getFileList(bugThresholds);
 	mothList = getFileList(mothThresholds);
-	
 	if(combinedDirLen != inputDirLen){
 		for (i = combinedDirLen; i < inputDirLen; i++) {
 			combineTwoThesholds(bugThresholds, bugList[i], mothThresholds, 
@@ -200,8 +201,6 @@ function main(){
 	selectWindow("Summary");
 	Table.save(csvResults + "Summary.csv");
 
-	close("Results");
-	close("Summary");
 	close("ROI Manager");
 	print("Program Successful");
 }
@@ -272,6 +271,7 @@ function getThesholdFromClassifier(inputDir, inputFile, outputDir){
 //		inputfile is a binary black and white file
 // sideffects:
 //		filtered image will be in output directory
+//		returns counted particles for error checking later
 function filterParticlesBySize(inputDir, inputFile, outputDir, min, max){
 	setOption("BlackBackground", false);
 	open(inputDir + inputFile);
@@ -284,7 +284,7 @@ function filterParticlesBySize(inputDir, inputFile, outputDir, min, max){
 	run("Convert to Mask");
 	run("8-bit");
 	run("Fill Holes");
-	run("Analyze Particles...", "size=" +min +"-" + max + " show=Masks");
+	run("Analyze Particles...", "size=" +min +"-" + max + " show=Masks");	
 	saveAs(".tiff", outputDir + inputFile);
 	close();
 	safeClose(originalImg);
@@ -363,7 +363,7 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 	//analyzes the particles and adds to results
 	run("8-bit");
 	run("Convert to Mask");
-	run("Analyze Particles...", "size="+ minInsectSizePixels + "-Infinity display exclude summarize overlay add");
+	run("Analyze Particles...", "size="+ minInsectSizeMMs + "-Infinity display exclude summarize overlay add");
 	safeClose(thesholdScaledUp);
 	safeClose(threshold);
 	
@@ -493,7 +493,7 @@ function addQuartiles(){
 	q2 = sizes[2 *  sizes.length / 4];
 	q3 = sizes[3 *  sizes.length / 4];
 	
-	sumNum = 0;
+	sumNum = 0;					//name of summary
 	blankArray = newArray(1);
 	blankArray[0] = 0;
 
@@ -505,17 +505,24 @@ function addQuartiles(){
 	Table.setColumn("Q3 Count", blankArray);
 	Table.setColumn("Q4 Count", blankArray);
 	
+	print("Nresults: " + nResults);
 	//loops through all bugs and adds to quartile
 	for (i = 0; i<nResults; i++){
-		//selectWindow("Results");
+		selectWindow("Summary");
+		
+		//gets insect information
 		areaInMM = getResult("AreaInMM", i);
 		label = getResultString("Label", i);
-		sumOn = Table.getString("Slice", sumNum);
+		summaryOnName = Table.getString("Slice", sumNum);
 		
 		//moves to next petri if mismatching names
-		if (sumOn != label){
+		if (summaryOnName != label){
 			sumNum = sumNum + 1;
-			sumOn = Table.get("Slice", sumOn);
+			
+			Table.set("Q1 Count", sumNum, 0);
+			Table.set("Q2 Count", sumNum, 0);
+			Table.set("Q3 Count", sumNum, 0);
+			Table.set("Q4 Count", sumNum, 0);
 		}
 		
 		//adds and tests to quartile
