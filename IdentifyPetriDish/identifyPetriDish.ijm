@@ -1,8 +1,8 @@
 //#@ String (label = "Name of output CSV file", persist=false, value = "Circle_Results") outputName
 
-var scaleFactor = 10;		//scale factor is needed otherwise hollow circle transform will crash
+var scaleFactor = 8;		//scale factor is needed otherwise hollow circle transform will crash
 var maxToMinRatio = 0.8;	//sets lower bound for size check
-var waitTimeUntilRetry = 50;     //in ms
+var waitTimeUntilRetry = 30;     //in 100 ms
 var scaleFactorInverse = 1/scaleFactor;
 
 var outputType = "tiff"; //tiff is better than jpg for image analysis
@@ -55,9 +55,9 @@ function main(){
 	if(notFound.length == 0){
 		print("All petri dishes found");
 	} else {
-		print("Could not find petri dishes: ")
-		for(i = 0; i < no; i++){
-			notFound[i];
+		print("Could not find petri dishes: ");
+		for(i = 0; i < notFound.length; i++){
+			print(notFound[i]);
 		}
 	}
 }
@@ -124,7 +124,7 @@ function createCircle(inputDir, outputDir, filename, i){
 	radius = getResult("Radius (pixels)", 0);
 	run("Clear Results");
 	
-	//gets location and dimension of petridish
+	//gets location and dimension of petridish
 	diameter = radius * 2  * scaleFactor;
 	xCorner = (x - radius) * scaleFactor;
 	yCorner = (y - radius) * scaleFactor;
