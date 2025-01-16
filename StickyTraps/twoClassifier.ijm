@@ -15,9 +15,9 @@ scaleFactor = 3;			// amount the image is scaled down by
 							
 petriDishSizeMM = 150;		// size of petri dish in mms
 
-minMothSizeMMs = 5;		// 
+minMothSizeMMs = 5;			// 
 
-minInsectSizeMMs = 0.05;
+minInsectSizeMMs = 0.4;
 
 ////////////////////////////////////////////////////////////////
 
@@ -413,7 +413,10 @@ function resultsFromThesholds(thesholdInDir, thesholdFile, originalInDir, origin
 		setResult("AreaInPixels", j, areaInPixels);
 		setResult("Number", j, number);
 		setResult("Label", j, originalFile);
-		
+		setResult("Date", j, fileNameSplit[0]);
+		setResult("Post", j, fileNameSplit[1]);
+		setResult("Direction", j, fileNameSplit[2]);
+
 		number++;
 	}
 	close();
