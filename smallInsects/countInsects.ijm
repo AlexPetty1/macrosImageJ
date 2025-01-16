@@ -3,10 +3,23 @@
 inputDir=getDirectory("Choose Source Directory ");
 outputDir=getDirectory("Choose folder for output");
 
-scaleFactor = 3;
-scaleFactorInverse = 1/scaleFactor;
 
-lowerBoundSizeMM2 = 0.1;
+
+
+////////////// Parameters //////////////////////////
+scaleFactor = 3;			// how much the image is scaled down, ex scaleFactor of 3: 3000px -> 1000px
+							//		make sure this amount puts images below 1500pxs and preferably around 1000px
+							//		set to same amount as training the classifier for consistancy
+lowerBoundSizeMM2 = 0.1;	// any particles below this size will be filtered out
+petriDishWidthMM = 150; 	// width of the petri dish, the petri dish should take up the whole with of the image
+							//		
+//////////////////////////////////////////////////
+
+
+
+
+
+scaleFactorInverse = 1/scaleFactor;
 
 //creates files
 outputDirTheshold = outputDir + "Theshold" + "/";
@@ -34,16 +47,20 @@ function main(){
 		startRow = nResults;
 	}
 	
+	//cleans up files
 	selectWindow("Trainable Weka Segmentation v3.3.4");
 	close();
 	
-	selectWindow("results");
+	selectWindow("Results");
 	saveAs("results", outputDir + "results.csv");
-	close();
+	close("Results");
 	
 	selectWindow("Summary");
-	saveAs("summary", outputDir + "summary.csv");
-	close();
+	Table.save(outputDir + "summary.csv");
+	close("Summary");
+	
+	close("ROI Manager");
+	print("Program Complete :)");
 }
 
 function countInsects(input, filename, iteration, startRow){
@@ -54,7 +71,7 @@ function countInsects(input, filename, iteration, startRow){
 	imageWidth = getWidth();
 	print("Image width: " + imageWidth);
 	
-	run("Set Scale...", "distance=" + imageWidth + " known=150 unit=mm");
+	run("Set Scale...", "distance=" + imageWidth + " known=" + petriDishWidthMM + " unit=mm");
 
 	//duplicates original then closes it to preserve it
 	run("Duplicate...", " ");
@@ -62,10 +79,8 @@ function countInsects(input, filename, iteration, startRow){
 	selectImage(original);
 	close();
 	
-	//sets measurements
-	selectImage(fullScale);
-	
 	//scales down image
+	selectImage(fullScale);
 	run("Scale...",  "x=" + scaleFactorInverse + " y=" + scaleFactorInverse + " interpolation=Bilinear average create");
 	scaled_down = getImageID();
 	
@@ -77,11 +92,12 @@ function countInsects(input, filename, iteration, startRow){
 	selectImage(scaled_down);
 	close();
 	
+	//calls classifier
 	selectWindow("Trainable Weka Segmentation v3.3.4");
 	call("trainableSegmentation.Weka_Segmentation.applyClassifier", inputDir, "scaledDown.tif", 
 		"showResults=true", "storeResults=false", "probabilityMaps=false", "");
 	
-	//scaled down not need anymore
+	//scaled down as it is not need anymore
 	if(isOpen("scaledDown.tif")){
 		selectImage("scaledDown.tif");
 		close();	
