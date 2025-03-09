@@ -1,12 +1,20 @@
 //#@ String (label = "Name of output CSV file", persist=false, value = "Circle_Results") outputName
 
-var scaleFactor = 8;		//scale factor is needed otherwise hollow circle transform will crash
-var maxToMinRatio = 0.8;	//sets lower bound for size check
-var waitTimeUntilRetry = 30;     //in 100 ms
+
+///// PARAMETERS //////////////////////////////////////////////////////
+
+var scaleFactor = 12;			// scale factor is needed otherwise hollow circle transform will crash
+								//    scales images by this factor aim for around 500pixels or less
+var maxToMinRatio = 0.5;		// sets lower bound for size for circle relative to smallest axis
+var waitTimeUntilRetry = 100;   // time to wait until retrying 
+var threshold = 0.4;			// threshold value for hough circle transform
+								//    a
+var outputType = "tiff"; 		// tiff is better than jpg for image analysis
+
+//////////////////////////////////////////////////////////////////////////////
+
+
 var scaleFactorInverse = 1/scaleFactor;
-
-var outputType = "tiff"; //tiff is better than jpg for image analysis
-
 
 main();
 
@@ -67,6 +75,8 @@ function main(){
 //identifies a circle on the image and saves it
 //		petri dishes are circles
 function createCircle(inputDir, outputDir, filename, i){
+	run("Clear Results");
+
 	open(inputDir + filename);
 	original = getImageID();
 	
@@ -88,7 +98,7 @@ function createCircle(inputDir, outputDir, filename, i){
 	widthScaled = getWidth();
 	heightScaled = getHeight();
 	maxRadius = minOf(widthScaled, heightScaled) / 2;
-	minRadius = maxRadius * 0.8;
+	minRadius = maxRadius * maxToMinRatio;
 	
 	minRadius = round(minRadius);
 	maxRadius = round(maxRadius);
@@ -97,7 +107,7 @@ function createCircle(inputDir, outputDir, filename, i){
 	run("Find Edges");
 	setAutoThreshold("Default dark no-reset");
 	run("Convert to Mask");
-	run("Hough Circle Transform","minRadius=" + minRadius +", maxRadius=" + maxRadius + ", inc=1, minCircles=1, maxCircles=65535, threshold=0.4, resolution=1000, ratio=1.0, bandwidth=10, local_radius=10,  reduce show_mask results_table");
+	run("Hough Circle Transform","minRadius=" + minRadius +", maxRadius=" + maxRadius + ", inc=1, minCircles=1, maxCircles=65535, threshold=" + threshold + ", resolution=1000, ratio=1.0, bandwidth=10, local_radius=10,  reduce show_mask results_table");
 	
 	//waits until hough circle transform is done
 	currentNImages = nImages;
@@ -110,19 +120,15 @@ function createCircle(inputDir, outputDir, filename, i){
 	}
 	
 	//checks if time out occurs meaning no image was found
-	if(counter >= waitTimeUntilRetry){
+	if(nResults == 0){
+		close("*");
 		return 0;
 	}
-	
-	wait(20);
-	close();
-	wait(50);
 	
 	//gets values from results
 	x = getResult("X (pixels)", 0);
 	y = getResult("Y (pixels)", 0);
 	radius = getResult("Radius (pixels)", 0);
-	run("Clear Results");
 	
 	//gets location and dimension of petridish
 	diameter = radius * 2  * scaleFactor;
@@ -142,9 +148,7 @@ function createCircle(inputDir, outputDir, filename, i){
 	run("Duplicate...", " ");
 	saveAs(outputType, outputDir + filename);
 	
-	close();
-	selectImage(notCropped);
-	close();
+	close("*");
 	return 1;
 }
 
