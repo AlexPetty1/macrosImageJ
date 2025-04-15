@@ -7,7 +7,7 @@ var scaleFactor = 12;			// scale factor is needed otherwise hollow circle transf
 								//    scales images by this factor aim for around 500pixels or less
 var maxToMinRatio = 0.5;		// sets lower bound for size for circle relative to smallest axis
 var waitTimeUntilRetry = 100;   // time to wait until retrying 
-var threshold = 0.4;			// threshold value for hough circle transform
+var threshold = 0.5;			// threshold value for hough circle transform
 								//    a
 var outputType = "tiff"; 		// tiff is better than jpg for image analysis
 
@@ -138,6 +138,18 @@ function createCircle(inputDir, outputDir, filename, i){
 	//makes circle on original image
 	open(inputDir + filename);
 	makeOval(xCorner, yCorner, diameter, diameter);
+	
+	//verifies make oval works
+	if(is("area") == false){
+		wait(10);
+		makeOval(xCorner, yCorner, diameter, diameter);
+		
+		if(is("area") == false){
+		
+			close("*");
+			return 0;
+		}
+	}
 	
 	//makes back ground white
 	setBackgroundColor(255, 255, 255);

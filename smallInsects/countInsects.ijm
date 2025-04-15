@@ -37,7 +37,7 @@ function main(){
 	//setsup the classifier
 	run("Trainable Weka Segmentation");
 	wait(3000);
-	selectWindow("Trainable Weka Segmentation v3.3.4");
+	selectWindow("Trainable Weka Segmentation v4.0.0");
 	call("trainableSegmentation.Weka_Segmentation.loadClassifier", classifier);
 	
 	//loops through all insects
@@ -48,7 +48,7 @@ function main(){
 	}
 	
 	//cleans up files
-	selectWindow("Trainable Weka Segmentation v3.3.4");
+	selectWindow("Trainable Weka Segmentation v4.0.0");
 	close();
 	
 	selectWindow("Results");
@@ -93,7 +93,7 @@ function countInsects(input, filename, iteration, startRow){
 	close();
 	
 	//calls classifier
-	selectWindow("Trainable Weka Segmentation v3.3.4");
+	selectWindow("Trainable Weka Segmentation v4.0.0");
 	call("trainableSegmentation.Weka_Segmentation.applyClassifier", inputDir, "scaledDown.tif", 
 		"showResults=true", "storeResults=false", "probabilityMaps=false", "");
 	
