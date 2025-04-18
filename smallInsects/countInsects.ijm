@@ -47,6 +47,8 @@ function main(){
 		startRow = nResults;
 	}
 	
+	addIDToResults();
+	
 	//cleans up files
 	selectWindow("Trainable Weka Segmentation v4.0.0");
 	close();
@@ -153,4 +155,32 @@ function countInsects(input, filename, iteration, startRow){
 	}
 	roiManager("deselect");
 	roiManager("delete");
+}
+
+
+function addIDToResults(){
+	if (nResults == 0) {
+		return;
+	}
+	
+	if(isOpen("Summary") == false){
+		return;
+	}
+	
+	selectWindow("Summary");
+	numberOfRows = Table.size;
+	resultOn = 0;
+	
+	for (i = 0; i < numberOfRows; i++) {
+		selectWindow("Summary");
+		petriOn = Table.getString("Slice", i);
+		numInsects = Table.get("Count", i);
+		
+		for(insectOn = 0; insectOn < numInsects; insectOn++){
+			setResult("Petri", resultOn, petriOn);
+			setResult("ID", resultOn, insectOn);
+			
+			resultOn++;
+		}
+	}
 }
